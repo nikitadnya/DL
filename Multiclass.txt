@@ -1,0 +1,107 @@
+# ---------------------------------------------------
+# IMPORT LIBRARIES
+# ---------------------------------------------------
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import classification_report
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.utils import to_categorical
+
+
+
+cols = ['letter'] + [f'f{i}' for i in range(1, 17)]
+data = pd.read_csv("letter-recognition.data", names=cols)
+
+print(data.head())
+
+
+
+X = data.iloc[:, 1:].values   # features
+y = data.iloc[:, 0].values    # labels
+
+# Convert A-Z → 0-25
+le = LabelEncoder()
+y = le.fit_transform(y)
+
+# One-hot encoding
+y = to_categorical(y)
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Scaling
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+
+model = Sequential([
+    Dense(128, activation='relu', input_shape=(16,)),
+    Dense(64, activation='relu'),
+    Dense(32, activation='relu'),
+    Dense(26, activation='softmax')   # 26 classes (A-Z)
+])
+
+
+
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+
+
+history = model.fit(
+    X_train, y_train,
+    epochs=25,
+    batch_size=32,
+    validation_split=0.2
+)
+
+
+
+loss, acc = model.evaluate(X_test, y_test)
+print("Test Accuracy:", acc)
+
+
+
+pred = model.predict(X_test)
+
+y_pred = np.argmax(pred, axis=1)
+
+y_true = np.argmax(y_test, axis=1)
+
+print("\nClassification Report:\n")
+print(classification_report(y_true, y_pred))
+
+print("\nSample Predictions:\n")
+for i in range(25, 50):
+    print("Actual:", y_true[i], "Predicted:", y_pred[i])
+
+
+
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title("Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Value")
+plt.legend(['Train', 'Validation'])
+plt.show()
+
+
+
+model.save("multiclass_letter_model.keras")
+print("Model saved successfully")
+
+for i in range(25, 50):
+    print("Actual:", y_true[i], "Predicted:", y_pred[i])

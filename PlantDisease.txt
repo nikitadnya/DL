@@ -1,0 +1,114 @@
+
+
+import tensorflow as tf
+from tensorflow.keras import layers, models
+import matplotlib.pyplot as plt
+import numpy as np
+from tensorflow.keras.preprocessing import image
+
+
+data_dir = r"C:\Users\Dnyanda\DL\PlantVillage-Dataset"   
+
+
+train_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    data_dir,
+    validation_split=0.2,
+    subset="training",
+    seed=123,
+    image_size=(128,128),
+    batch_size=32
+)
+
+val_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    data_dir,
+    validation_split=0.2,
+    subset="validation",
+    seed=123,
+    image_size=(128,128),
+    batch_size=32
+)
+
+class_names = train_ds.class_names
+print("Classes:", class_names)
+
+
+model = models.Sequential([
+    layers.Rescaling(1./255, input_shape=(128,128,3)),
+
+    layers.Conv2D(32,3,activation='relu'),
+    layers.MaxPooling2D(),
+
+    layers.Conv2D(64,3,activation='relu'),
+    layers.MaxPooling2D(),
+
+    layers.Flatten(),
+
+    layers.Dense(128,activation='relu'),
+    layers.Dense(len(class_names),activation='softmax')
+])
+
+
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+
+history = model.fit(train_ds, validation_data=val_ds, epochs=3)
+
+
+plt.plot(history.history['accuracy'], label='Train')
+plt.plot(history.history['val_accuracy'], label='Validation')
+plt.legend()
+plt.title("Accuracy")
+plt.show()
+
+
+model.save("plant_model.keras")
+print("Model Saved")
+
+
+img_path = r"C:\Users\Dnyanda\Downloads\image (1009).JPG"   # ← CHANGE IMAGE PATH
+
+img = image.load_img(img_path, target_size=(128,128))
+img_array = image.img_to_array(img)
+img_array = np.expand_dims(img_array, axis=0)
+
+pred = model.predict(img_array)
+result = np.argmax(pred)
+
+print("Predicted Disease:", class_names[result])
+
+plt.imshow(img)
+plt.title(class_names[result])
+plt.axis("off")
+plt.show()
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+plt.figure(figsize=(10,10))
+
+for images, labels in val_ds.take(1):   # take one batch
+    
+    predictions = model.predict(images)
+    pred_labels = np.argmax(predictions, axis=1)
+
+    for i in range(12):   # show 9 images
+        plt.subplot(4,3,i+1)
+        plt.imshow(images[i].numpy().astype("uint8"))
+        
+        actual = class_names[labels[i]]
+        predicted = class_names[pred_labels[i]]
+        
+        plt.title(f"A: {actual}\nP: {predicted}")
+        plt.axis("off")
+
+plt.tight_layout()
+plt.show()
+
+loss, acc = model.evaluate(val_ds)
+
+print("Accuracy:", acc)

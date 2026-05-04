@@ -1,0 +1,85 @@
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.layers import Flatten, Dense, Input,Conv2D, MaxPooling2D
+from tensorflow.keras.models import Sequential
+
+
+(x_train, y_train), (x_test, y_test) = keras.datasets.fashion_mnist.load_data()
+
+
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+
+
+class_names = ['T-shirt', 'Trouser', 'Pullover', 'Dress', 'Coat',
+               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+
+
+
+model = Sequential([
+    Input(shape=(28,28,1)),
+    
+    Conv2D(32, (3,3), activation='relu'),
+    MaxPooling2D(),
+    
+    Conv2D(64, (3,3), activation='relu'),
+    MaxPooling2D(),
+    
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dense(10, activation='softmax')
+])
+
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+
+model.fit(x_train, y_train, epochs=5)
+
+
+loss, acc = model.evaluate(x_test, y_test)
+print("\nTest Accuracy:", acc)
+
+
+predictions = model.predict(x_test)
+
+
+print("\nSample Predictions:\n")
+for i in range(5):
+    pred_label = np.argmax(predictions[i])
+    true_label = y_test[i]
+    
+    print("Image", i+1)
+    print("Actual   :", class_names[true_label])
+    print("Predicted:", class_names[pred_label])
+    print()
+
+
+plt.figure(figsize=(12,6))
+
+for i in range(10):
+    plt.subplot(2,5,i+1)
+    plt.imshow(x_test[i], cmap="viridis", interpolation="nearest")
+
+    pred = np.argmax(predictions[i])
+    true = y_test[i]
+
+    color = "green" if pred == true else "red"
+
+    plt.title(f"P: {class_names[pred]}\nT: {class_names[true]}", color=color)
+    plt.axis("off")
+
+plt.suptitle("Predicted vs Actual", fontsize=16)
+plt.tight_layout()
+plt.show()
+
+# 10. Show one image with prediction
+plt.imshow(x_test[0], cmap='gray')
+plt.title("Predicted: " + class_names[np.argmax(predictions[0])])
+plt.axis('off')
+plt.show()

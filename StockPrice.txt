@@ -1,0 +1,138 @@
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+
+
+
+
+print("Loading Dataset...")
+
+data = pd.read_csv(r"C:\Users\Dnyanda\DL\Google Dataset.csv")
+
+features = ['Open','High','Low','Close','Volume']
+dataset = data[features].values
+
+print("Dataset Shape:", dataset.shape)
+
+
+split = int(len(dataset)*0.8)
+
+train = dataset[:split]
+test = dataset[split:]
+
+print("Train:", train.shape)
+print("Test:", test.shape)
+
+
+scaler = MinMaxScaler()
+train_scaled = scaler.fit_transform(train)
+
+
+X_train = []
+y_train = []
+
+for i in range(60, len(train_scaled)):
+    X_train.append(train_scaled[i-60:i])
+    y_train.append(train_scaled[i,0])   # Predict Open
+
+X_train = np.array(X_train)
+y_train = np.array(y_train)
+
+print("X_train shape:", X_train.shape)
+
+
+model = Sequential()
+
+
+model.add(LSTM(50, return_sequences=True, input_shape=(60,5)))
+model.add(LSTM(50))
+model.add(Dense(1))
+
+model.compile(optimizer='adam', loss='mse')
+
+print("Model Built")
+
+
+model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=1)
+
+
+full_data = np.concatenate((train, test), axis=0)
+
+inputs = full_data[len(full_data)-len(test)-60:]
+inputs = scaler.transform(inputs)
+
+X_test = []
+
+for i in range(60, 60+len(test)):
+    X_test.append(inputs[i-60:i])
+
+X_test = np.array(X_test)
+
+print("X_test shape:", X_test.shape)
+
+
+
+pred_scaled = model.predict(X_test)
+
+# Convert back to original values
+dummy = np.zeros((pred_scaled.shape[0], 5))
+dummy[:,0] = pred_scaled[:,0]
+
+predicted = scaler.inverse_transform(dummy)[:,0]
+
+real = test[:,0]
+
+
+rmse = np.sqrt(mean_squared_error(real, predicted))
+print("\nRMSE:", rmse)
+
+
+result = pd.DataFrame({
+    "Actual Open": real,
+    "Predicted Open": predicted
+})
+
+print("\n===== ACTUAL vs PREDICTED =====")
+print(result.head(15))
+
+
+plt.figure(figsize=(10,5))
+
+plt.plot(real, color='red', label='Real Price')
+plt.plot(predicted, color='blue', label='Predicted Price')
+
+plt.title("Stock Prediction using LSTM (Multifeature)")
+plt.xlabel("Time")
+plt.ylabel("Price")
+plt.legend()
+
+plt.show()
+
+
+from tensorflow.keras.models import load_model
+
+model = load_model("googlestock_model.keras")
+
+print("Model Loaded Successfully")
+import pandas as pd
+
+result = pd.DataFrame({
+    "Actual": real_price.flatten(),
+    "Predicted": predicted.flatten()
+})
+
+print(result.head(15))
+from sklearn.metrics import mean_squared_error
+
+mse = mean_squared_error(real_price, predicted)
+rmse = np.sqrt(mse)
+
+print("MSE:", mse)
+print("RMSE:", rmse)
